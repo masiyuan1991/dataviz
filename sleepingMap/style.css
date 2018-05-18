@@ -75,6 +75,7 @@ table {
 
         .half{width: 47%;}
         .half-full{width: 70%;}
+        .small{width: 8%;}
 
         .full{width: 96%;}
 
@@ -109,6 +110,18 @@ table {
             color:#ffffff;
             line-height: 18px;
         }
+
+
+        .font-5{
+            font-family: 'Rubik', sans-serif;
+            font-weight: 300;
+            font-size: 16px;
+            color:#FFD400;
+            line-height: 18px;
+        }
+        
+
+
         #slider{
             -webkit-appearance: none;
             width: 1200px;
@@ -124,7 +137,7 @@ table {
         }
 
 
-
+        
 
 
 
