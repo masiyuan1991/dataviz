@@ -67,18 +67,14 @@
 	</div>
 		
 
-	<div id="slider-container" class="row">
-		<div class = "col full">
-			<input type="range" min="2009" max="2016" value="2009" id="slider">
-
-		</div>
-	</div>
+	
 
 	<div class="row">
-		<div class="col half">
+		<div id="details" class="col half">
 			<p>
 				<li class="font-4">State Name:</li>
 				<li class="font-4">County Name:</li>
+				<li class="font-4">Population:</li>
 				<li class="font-4">Light Intensity:</li>
 			</p>
 		</div>
@@ -96,6 +92,7 @@
 	<script src="https://d3js.org/d3.v4.min.js"></script>
 	<script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
 	<script src="https://d3js.org/d3-geo-projection.v2.min.js"></script>
+
 
 	<script>
 		var width = 1200;
@@ -120,7 +117,7 @@
 			.attr('y',0)
 			.attr('width',width)
 			.attr('height',height)
-			.attr('fill','rgb(50,50,50)')
+			.attr('fill','rgb(60,60,60)')
 		;
 
 
@@ -136,221 +133,213 @@
     	//svg group for zooming
     	var g = svg.append('g');
 
-    	//load county geo-data
+		d3.text("https://api.census.gov/data/2015/acs/acs5?get=NAME,B01001_001E&for=county:*&key=19d3475dfcf76385a1f916d7e010500b39b92c43", function(censusData){
+			var noBracketsData = censusData.replace(/[\[\]]+/g,'');
 
 
-		var legendPadding = 60;
-		var legendHeight = 300;
-		var legendWidth = 60;
-
-		var legendBlockHeight = 33.5;
-
-
-		var legendTicks = [0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1];
-
-		var legendGroup = svg.append('g');
-
-		var legendBackground = legendGroup
-			.append('rect')
-			.attr('y', (height - legendHeight) * 0.5 )
-			.attr('x', legendPadding)
-			.attr('height', legendHeight)
-			.attr('width', legendWidth)
-			.attr('fill','#ddd')
-			.attr('stroke','#43246C')
-			.attr('stroke-width', 0)
-			;
-
-
-		var legendTitle = legendGroup
-			.append('text')
-			.attr('id', 'legendTitle')
-			.attr('x', legendPadding * 0.35)
-			.attr('y', height * 0.5 + legendHeight * 0.5 + 30 )
-			.text("Degree of light Pollution")
-			.attr('fill', '#ffffff')
-			;
+			var dataset1 = d3.csvParse(noBracketsData, function(d){
 
 
 
-		var legendBlocks = legendGroup
-			.selectAll('.blocks')
-			.data(legendTicks)
-			.enter()
-			.append('rect')
-			.attr('class','blocks')
-			.attr('x', legendPadding)
-			.attr('y', function(d,i){return (height - legendHeight) * 0.5 + i * legendBlockHeight})
-			.attr('width', legendWidth)
-			.attr('height', legendBlockHeight)
-			.attr('fill', function(d){return d3.interpolateViridis(d)})
-			;
+							return {
+								name: d.NAME,
+								county: d.county,
+								fips: d.state,
+								Population: parseInt(d.B01001_001E),
 
-		var legendLables = legendGroup
-			.selectAll('.ticks')
-			.data(legendTicks)
-			.enter()
-			.append('text')
-			.attr('class', 'ticks')
-			.attr('x', legendPadding + legendWidth + 8)
-			.attr('y', function(d,i){return (height - legendHeight) * 0.5 + i * legendBlockHeight + 22})
-			.text(function(d){return 10*d})
-			.attr('fill', '#ffffff')
-			;
-	    	
-
-
-    	d3.json('counties.json', function(err, geojson){
-    		
-    		var counties = g
-    				.selectAll('.counties')
-    				.data(geojson.features)
-    				.enter()
-    				.append("path")
-    				.attr("d", path)
-    				.attr("class","counties")
-					.attr('stroke-width',0)
-					.attr('stroke','white')
-					.attr('fill', 'black')
-				;
-
-			update(2009)
-
-
-
-			var linkSleep = g
-				.append('circle')
-				.attr('r', 100)
-				.attr('cx', 699)
-				.attr('cy', 923)
-				.attr('fill', 'white')
-				.attr('opacity', 0.8)
-				;
+							};
 
 
 
 
-	    	d3.selectAll('#slider')
-				.on('input', function(){
-
-	    		
-	    			var year = d3.select('#slider').property('value');
-	    			update(year);
-
-	    		});
-
-	    	function update(year){
-
-	    		if( (year == 2015) || (year == 2016) || (year == 2011)){
-	    			var address = "https://api.census.gov/data/" + year + "/acs/acs5?get=NAME,B01001_001E&for=county:*"
-	    		}
-	    		else{
-	    			var address = "https://api.census.gov/data/" +year +"/acs5?get=NAME,B01001_001E&for=county:*"
-	    		}
-	    		
-
-				d3.text(address, function(censusData){
-
-					var noBracketsData = censusData.replace(/[\[\]]+/g,'');
+					});
+			console.log(dataset1)
+	
 
 
-					var dataset1 = d3.csvParse(noBracketsData, function(d){
+			
+   					;
+
+
+   			//input json data
+			var censusMap= d3.map(dataset1, function(d){return d.fips + d.county});
+
+   			d3.json('counties.json', function(err, geojson) {
+
+		
+   								
+
+				geojson.features.forEach(function(county){
+
+					var match = censusMap.get(county.properties.GEOID);
+
+					if(match){
+						county.properties.population = match.Population;
+						county.properties.density = parseInt(match.Population) / parseInt(county.properties.ALAND);
+
+
+						var the_string = match.name;
+						var parts = the_string.split(', ',2);
+
+						county.properties.state = parts[1];
+					}
+					else{
+						county.properties.population = 0;
+						county.properties.density = 0;
+					}
+
+				})
+
+				console.log(geojson.features)
+
+			   	var landExtent = d3.extent(geojson.features, function(d) { return d.properties.density});
+
+				var landScale = d3.scalePow().exponent(0.15).domain(landExtent).range([0,1]);
 
 
 
-									return {
-										name: d.NAME,
-										county: d.county,
-										fips: d.state,
-										Population: parseInt(d.B01001_001E),
+				var counties = g
+					.selectAll('.counties')
+					.data(geojson.features)
+					.enter()
+					.append("path")
+					.attr("d", path)
+					.attr('stroke', 'white')
+					.attr('stroke-width', 0)
+					.attr("class","counties")
+					//.attr('stroke', 'white')
+					.attr('fill', function(d){
+						//console.log(landScale(d.properties.density))
+						return d3.interpolateViridis(landScale(d.properties.density));
 
-									};
+
+					})	
+					.attr('opacity',1)
+
+					.on('mouseover',function(d){
+						d3.selectAll('.counties').transition().duration(200).attr('stroke-width',0);
+						d3.select(this).transition().duration(450).attr('stroke-width',2);
 
 
+							d3.select('#details').html(
 
+										"<div id='details' class='col half'>" +
+											"<p>" +
+												"<li class='font-4'>State Name: " +  d.properties.state + "</li>" +
+												"<li class='font-4'>County Name: " +  d.properties.NAME  + "</li>" +
+												"<li class='font-4'>Population: " +  d.properties.population  + "</li>" +
+												"<li class='font-4'>Light Intensity: " +  parseInt ( landScale(d.properties.density) * 10 ) + "</li>" +
+											"</p>" +
+										"</div>"
+													)
 
-							});
-
-		   			//input json data
-					var censusMap= d3.map(dataset1, function(d){return d.fips + d.county});
-
-					(geojson.features).forEach(function(county){
-
-						var match = censusMap.get(county.properties.GEOID);
-
-						if(match){
-							county.properties.population = match.Population;
-							county.properties.density = parseInt(match.Population) / parseInt(county.properties.ALAND);
-						}
-						else{
-							county.properties.population = 0;
-							county.properties.density = 0;
-						}
 					})
-    		
+					.on('mouseout',function(d){
+						d3.selectAll('.counties').transition().duration(200).attr('stroke-width',0);
+						d3.select(this).transition().duration(450).attr('stroke-width',0);
 
 
-				   	var landExtent = d3.extent(geojson.features, function(d) { return d.properties.density});
-
-					var landScale = d3.scalePow().exponent(.25).domain(landExtent).range([0,1]);
+					})
 
 
-
-
-		    		g.selectAll('.counties')
-		    				.data(geojson.features)
-		    				.transition()
-							.attr('fill', function(d){
-							//console.log(landScale(d.properties.density))
-							return d3.interpolateViridis(landScale(d.properties.density));})
-							
-							.on('mouseover',function(d){
-								d3.selectAll('.counties').transition().duration(200).attr('stroke-width',0);
-								//d3.selectAll('#countiesName').transition().duration(0).attr('opacity',0).remove();
-								d3.select(this).transition().duration(450).attr('stroke-width',2);
-
-									// d3.select('#details').html(
-
-									// 			"<div id='details' class='col half'>" +
-									// 				"<p>" +
-									// 					"<li class='font-4'>State Name: " +  d.properties.state + "</li>" +
-									// 					"<li class='font-4'>County Name: " +  d.properties.county  + "</li>" +
-									// 					"<li class='font-4'>Insufficient Sleep: " +  d.properties.badSleep  + "%" + "</li>" +
-									// 				"</p>" +
-									// 			"</div>"
-
-
-
-
-							 //"<ul><li class='font-4'>State Name: " + d.properties.GEOID + "</li><li class='font-4'>County Name:" +:</li><li class='font-4'>" + Insufficient Sleep + "</li></ul>"
-						
-
-
-
-
-							})
-						.on('mouseout',function(d){
-							d3.selectAll('.counties').transition().duration(500).attr('stroke-width',0);
-							//d3.selectAll('#countiesName').transition().duration(200).attr('opacity'0).remove();
-							d3.select(this).transition().duration(450).attr('stroke-width',0);	
-								;
-								})
+					;			
+			
 			
 
-	    	})
-
-		}
-
-	})
 
 
 
 
 
-  
+
+
+
+
+
+
+
+	
+
+			})
+			
+
+
+				var legendPadding = 60;
+				var legendHeight = 300;
+				var legendWidth = 60;
+
+				var legendBlockHeight = 33.5;
+
+
+				var legendTicks = [0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1];
+
+				var legendGroup = svg.append('g');
+
+				var legendBackground = legendGroup
+					.append('rect')
+					.attr('y', (height - legendHeight) * 0.5 )
+					.attr('x', legendPadding)
+					.attr('height', legendHeight)
+					.attr('width', legendWidth)
+					.attr('fill','#ddd')
+					.attr('stroke','#43246C')
+					.attr('stroke-width', 0)
+					;
+
+
+				var legendTitle = legendGroup
+					.append('text')
+					.attr('id', 'legendTitle')
+					.attr('x', legendPadding * 0.35)
+					.attr('y', height * 0.5 + legendHeight * 0.5 + 30 )
+					.text("Degree of light Pollution")
+					.attr('fill', '#ffffff')
+					;
+
+
+
+				var legendBlocks = legendGroup
+					.selectAll('.blocks')
+					.data(legendTicks)
+					.enter()
+					.append('rect')
+					.attr('class','blocks')
+					.attr('x', legendPadding)
+					.attr('y', function(d,i){return (height - legendHeight) * 0.5 + i * legendBlockHeight})
+					.attr('width', legendWidth)
+					.attr('height', legendBlockHeight)
+					.attr('fill', function(d){return d3.interpolateViridis(d)})
+					;
+
+				var legendLables = legendGroup
+					.selectAll('.ticks')
+					.data(legendTicks)
+					.enter()
+					.append('text')
+					.attr('class', 'ticks')
+					.attr('x', legendPadding + legendWidth + 8)
+					.attr('y', function(d,i){return (height - legendHeight) * 0.5 + i * legendBlockHeight + 22})
+					.text(function(d){return 10*d})
+					.attr('fill', '#ffffff')
+					;
+
+
+
+
+    	});
+
+
+
+
+
 
 
 
 	</script>
+
+
+
+
+
 </body>
 </html>
